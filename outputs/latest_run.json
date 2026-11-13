@@ -1,0 +1,56 @@
+{
+  "topic": "Introduction to RAG",
+  "lesson": "# Introduction to RAG: a beginner lesson\n\n## What it is\nRetrieval-Augmented Generation (RAG) is a way to make an AI answer using\nrelevant information retrieved from a trusted collection. It combines search\nwith generation. The language model writes the answer, but the retrieved\ndocuments provide the facts.\n\n## Why it matters\nA model may not know your private documents, and it may confidently make up\nan answer. RAG lets a system use newer or organisation-specific information.\nIt can also show the source text so a person can check the answer. RAG does\nnot make every answer true: poor documents or poor search can still lead to\nan incorrect answer.\n\n## How it works\n1. **Ask:** the learner sends a question.\n2. **Retrieve:** a search system finds the most relevant chunks of documents.\n3. **Augment:** the question and those chunks are placed together in a prompt.\n4. **Generate:** the language model writes an answer based on that context.\n5. **Check:** the application can show sources and ask a person to verify\n   important answers.\n\n\n### A simple example\nSuppose you ask, \"What is our refund policy?\" The system first retrieves the policy page, then gives that text to the language model. The answer can say, \"Refunds are allowed within 30 days,\" and point back to the retrieved page.\n\n## Important words\n- **Document:** a source such as a webpage, PDF, or database record.\n- **Chunk:** a smaller piece of a document used for search.\n- **Embedding:** a list of numbers that represents meaning, so similar text\n  can be found even when it uses different words.\n- **Context:** the retrieved text given to the model.\n\n## A useful mental model\nRAG is like an open-book exam: search finds the right pages, and the model\nuses those pages to write a clear answer. It is not the same as teaching the\nmodel new permanent knowledge (fine-tuning).\n\n## Summary\nRAG retrieves relevant information, adds it to a prompt, and generates an\nanswer grounded in that information. It is useful when answers need private,\nfresh, or checkable facts.\n",
+  "evaluation": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "definition",
+        "passed": true,
+        "reason": "Defines RAG in plain language."
+      },
+      {
+        "name": "why_it_matters",
+        "passed": true,
+        "reason": "Explains private/fresh knowledge and why sources help."
+      },
+      {
+        "name": "process",
+        "passed": true,
+        "reason": "Explains the retrieve → augment → generate flow."
+      },
+      {
+        "name": "concrete_example",
+        "passed": true,
+        "reason": "Uses a concrete question and answer example."
+      },
+      {
+        "name": "jargon",
+        "passed": true,
+        "reason": "Explains key terms instead of leaving them unexplained."
+      },
+      {
+        "name": "accuracy_boundary",
+        "passed": true,
+        "reason": "States a limitation so learners do not over-trust RAG."
+      },
+      {
+        "name": "beginner_flow",
+        "passed": true,
+        "reason": "Has enough standalone teaching flow and a summary."
+      }
+    ]
+  },
+  "attempts": 2,
+  "rejections": [
+    {
+      "attempt": 1,
+      "reasons": [
+        "Add a concrete beginner-friendly example."
+      ],
+      "changes_requested": [
+        "Add a concrete beginner-friendly example."
+      ]
+    }
+  ]
+}
