@@ -38,6 +38,9 @@ class RunResult:
     evaluation: Evaluation
     attempts: int
     rejections: list[Rejection] = field(default_factory=list)
+    provider: str = "offline"
+    model: str | None = None
+    provider_errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -46,4 +49,7 @@ class RunResult:
             "evaluation": self.evaluation.to_dict(),
             "attempts": self.attempts,
             "rejections": [asdict(item) for item in self.rejections],
+            "provider": self.provider,
+            "model": self.model,
+            "provider_errors": self.provider_errors,
         }

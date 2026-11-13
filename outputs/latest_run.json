@@ -41,16 +41,9 @@
       }
     ]
   },
-  "attempts": 2,
-  "rejections": [
-    {
-      "attempt": 1,
-      "reasons": [
-        "Add a concrete beginner-friendly example."
-      ],
-      "changes_requested": [
-        "Add a concrete beginner-friendly example."
-      ]
-    }
-  ]
+  "attempts": 1,
+  "rejections": [],
+  "provider": "offline",
+  "model": null,
+  "provider_errors": []
 }

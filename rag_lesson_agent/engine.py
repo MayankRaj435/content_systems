@@ -38,7 +38,7 @@ class LessonAgent:
             lesson = self.generator.generate(topic, feedback, self.memory.recent())
             evaluation = self.evaluator.evaluate(lesson, topic)
             if evaluation.passed:
-                result = RunResult(topic, lesson, evaluation, attempt + 1, rejections)
+                result = self._result(topic, lesson, evaluation, attempt + 1, rejections)
                 self._remember(result)
                 return result
             if attempt < self.max_retries:
@@ -52,7 +52,9 @@ class LessonAgent:
                 )
 
         assert evaluation is not None
-        result = RunResult(topic, lesson, evaluation, self.max_retries + 1, rejections)
+        result = self._result(
+            topic, lesson, evaluation, self.max_retries + 1, rejections
+        )
         self._remember(result)
         return result
 
@@ -69,5 +71,27 @@ class LessonAgent:
                     for reason in rejection.reasons
                 ] or [check.reason for check in result.evaluation.failures],
                 "rejections": [asdict(item) for item in result.rejections],
+                "provider": result.provider,
+                "model": result.model,
+                "provider_errors": result.provider_errors,
             }
+        )
+
+    def _result(
+        self,
+        topic: str,
+        lesson: str,
+        evaluation: Any,
+        attempts: int,
+        rejections: list[Rejection],
+    ) -> RunResult:
+        return RunResult(
+            topic,
+            lesson,
+            evaluation,
+            attempts,
+            rejections,
+            provider=getattr(self.generator, "provider", "unknown"),
+            model=getattr(self.generator, "model", None),
+            provider_errors=list(getattr(self.generator, "errors", [])),
         )

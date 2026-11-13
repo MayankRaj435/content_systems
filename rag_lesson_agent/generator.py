@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import os
 from typing import Protocol
+
+
+class GenerationError(RuntimeError):
+    """A provider failed to produce usable lesson text."""
 
 
 class LessonGenerator(Protocol):
@@ -20,6 +25,14 @@ class TemplateGenerator:
         if not feedback and not learned_from_memory:
             return self._draft(topic, include_example=False)
         return self._draft(topic, include_example=True)
+
+    @property
+    def provider(self) -> str:
+        return "offline"
+
+    @property
+    def model(self) -> str | None:
+        return None
 
     @staticmethod
     def _draft(topic: str, include_example: bool) -> str:
@@ -73,3 +86,122 @@ RAG retrieves relevant information, adds it to a prompt, and generates an
 answer grounded in that information. It is useful when answers need private,
 fresh, or checkable facts.
 """
+
+
+class FallbackGenerator:
+    def __init__(
+        self,
+        primary: LessonGenerator,
+        fallback: LessonGenerator | None = None,
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback or TemplateGenerator()
+        self.errors: list[str] = []
+
+    def generate(self, topic: str, feedback: list[str], memory: list[dict]) -> str:
+        try:
+            return self.primary.generate(topic, feedback, memory)
+        except GenerationError as error:
+            message = str(error)
+            if message not in self.errors:
+                self.errors.append(message)
+            return self.fallback.generate(topic, feedback, memory)
+
+    @property
+    def provider(self) -> str:
+        return f"{self.primary.provider}+{self.fallback.provider}"
+
+    @property
+    def model(self) -> str | None:
+        return self.primary.model
+
+
+class GeminiGenerator:
+    """Gemini Developer API adapter using Google's current ``google-genai`` SDK."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        client: object | None = None,
+    ) -> None:
+        if client is None:
+            try:
+                from dotenv import load_dotenv
+            except ImportError as error:
+                raise RuntimeError(
+                    "Gemini support requires the optional dependencies: "
+                    "pip install -r requirements-gemini.txt"
+                ) from error
+            load_dotenv()
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        if client is not None:
+            self.client = client
+            return
+        key = api_key or os.getenv("GEMINI_API_KEY")
+        if not key:
+            raise ValueError(
+                "GEMINI_API_KEY is required when using the Gemini provider"
+            )
+        try:
+            from google import genai
+        except ImportError as error:
+            raise RuntimeError(
+                "Gemini support requires the optional dependency: "
+                "pip install -r requirements-gemini.txt"
+            ) from error
+        self.client = genai.Client(api_key=key)
+
+    def generate(self, topic: str, feedback: list[str], memory: list[dict]) -> str:
+        prompt = self._build_prompt(topic, feedback, memory)
+        try:
+            from google.genai import errors as genai_errors
+        except ImportError as error:
+            raise GenerationError(
+                "Gemini support requires the optional dependency: "
+                "pip install -r requirements-gemini.txt"
+            ) from error
+        try:
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+            )
+        except genai_errors.APIError as error:
+            raise GenerationError(f"Gemini request failed: {error}") from error
+        text = getattr(response, "text", None)
+        if not isinstance(text, str) or not text.strip():
+            raise GenerationError("Gemini returned an empty lesson")
+        return text.strip()
+
+    @property
+    def provider(self) -> str:
+        return "gemini"
+
+    @staticmethod
+    def _build_prompt(topic: str, feedback: list[str], memory: list[dict]) -> str:
+        feedback_text = "\n".join(f"- {item}" for item in feedback) or "- None"
+        memory_text = "\n".join(
+            f"- Previous run: {entry.get('failures', [])}"
+            for entry in memory[-3:]
+        ) or "- No previous runs"
+        return f"""You write a standalone beginner lesson for a learner who finished
+12th grade in India and is new to AI. Use simple English and short sentences.
+
+Topic: {topic}
+
+The lesson must:
+- define the topic and explain why it matters;
+- explain the process step by step;
+- teach at least one practical example;
+- define every technical term before relying on it;
+- explain limitations and avoid claiming unsupported facts;
+- use headings and end with a short summary.
+
+Fix every failure from the previous draft:
+{feedback_text}
+
+Relevant memory from earlier runs:
+{memory_text}
+
+Return only the lesson in Markdown. Do not mention this prompt, evaluation,
+feedback, or memory."""

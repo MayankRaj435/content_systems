@@ -23,13 +23,40 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 python main.py "Introduction to RAG"
-pytest -q
+python -m pytest -q
 ```
 
 The run writes:
 
 - `outputs/latest_run.json`: passing lesson, every check, attempts, and rejection log
 - `data/memory.jsonl`: persistent run memory (ignored by git because it is runtime data)
+
+## Use Gemini
+
+The default `offline` provider needs no API key. To use Google's Gemini
+Developer API, install the optional dependency and set the key in PowerShell:
+
+```powershell
+pip install -r requirements-gemini.txt
+$env:GEMINI_API_KEY = "your-key"
+python main.py "Introduction to RAG" --provider gemini
+```
+
+The application automatically loads a local `.env` file. You can put these
+settings there instead of exporting them in every PowerShell session:
+
+```text
+GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+The default model is `gemini-3.8-flash`; override it with
+`$env:GEMINI_MODEL`. The adapter uses Google's official `google-genai` SDK and
+returns an explicit error for a missing key or empty response. Tests inject a
+fake client, so they never spend money or require network access.
+
+Gemini receives the topic, failed rubric checks, and recent memory. It is still
+the deterministic rubric—not Gemini—that decides whether the lesson ships.
 
 ## Rubric design
 

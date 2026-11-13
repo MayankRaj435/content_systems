@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from rag_lesson_agent import LessonAgent
+from rag_lesson_agent import FallbackGenerator, GeminiGenerator, LessonAgent
+from rag_lesson_agent.generator import GenerationError
 from rag_lesson_agent.evaluator import RubricEvaluator
 from rag_lesson_agent.memory import MemoryStore
 
@@ -35,3 +36,42 @@ def test_rubric_is_hard_pass_fail():
     evaluation = RubricEvaluator().evaluate("RAG is search. Summary.", "RAG")
     assert not evaluation.passed
     assert any(not check.passed for check in evaluation.checks)
+
+
+def test_gemini_generator_uses_prompt_and_returns_text():
+    class FakeResponse:
+        text = "Generated lesson"
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            assert kwargs["model"] == "test-model"
+            assert "Introduction to RAG" in kwargs["contents"]
+            assert "Add an example" in kwargs["contents"]
+            return FakeResponse()
+
+    class FakeClient:
+        models = FakeModels()
+
+    generator = GeminiGenerator(model="test-model", client=FakeClient())
+    assert generator.generate("Introduction to RAG", ["Add an example"], []) == (
+        "Generated lesson"
+    )
+
+
+def test_provider_failure_falls_back_and_records_error(tmp_path):
+    class BrokenGenerator:
+        provider = "gemini"
+        model = "test-model"
+
+        def generate(self, topic, feedback, memory):
+            raise GenerationError("temporary Gemini outage")
+
+    generator = FallbackGenerator(BrokenGenerator())
+    result = LessonAgent(
+        generator=generator,
+        memory=MemoryStore(tmp_path / "memory.jsonl"),
+    ).run("Introduction to RAG")
+
+    assert result.evaluation.passed
+    assert result.provider == "gemini+offline"
+    assert result.provider_errors == ["temporary Gemini outage"]
